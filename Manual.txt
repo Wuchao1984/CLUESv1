@@ -1,0 +1,269 @@
+About the code
+Title: CLUES: a method to call multi-size enrichment regions (ERs) from ChIP-Seq data in R
+Version: 1
+Date: 2017-05-22
+Description: This method (CLUES) will identify narrow peaks (NPs) from the input ChIP-Seq, and then cluster 
+NPs into short broad enrichment regions (SERs) and long broad enrichment regions (LERs). 
+Author: Chao Wu <wuchao1984@zju.edu.cn>, Junling Jia <junlingjia@zju.edu.cn>
+Maintainer: Chao Wu <wuchao1984@zju.edu.cn>
+Depends: R (>= 3.1.0), parallel (3.1.0) and please run the code in linux enviroment because the shell commands are embedded in the code.
+
+#####################################################################################################
+What to prepare?
+
+CLUES will call NPs, SERs and LERs from the input ChIP-Seq data with or without control sample.
+Please prepare the sorted bed-format reads file (.bed) from single-end ChIP-Sequencing data as input files. 
+The sorted bed-format files can be output from standard high throughput sequencing piplelines. 
+Here is our pipeline to get the sorted bed-format reads file
+"bowtie -S -m 1 -p 20 --solexa-quals -v 2 /public/sequence/genomes/mouse/mm9 $1.fq $1.sam &>$1_mm9.log"
+"samtools view -S -b $1.sam -o $1.bam"
+"samtools sort $1.bam $1_sorted"
+"/public/software_bioinformatics/BEDTools-Version-2.12.0/bin/bamToBed -i $1_sorted.bam >$1_sorted.bed"
+
+We will modify the code and accepts the reads file from pair-end ChIP-Sequencing data as input files in the next version of CLUES.
+
+
+#######################################################################################################
+How to run?
+
+1	run CLUES to call NPs, SERs and LERs automatically (with default parameter).
+	please put the case (Mikkelsen_H3K27me3_dupRemove.bed) and control (Mikkelsen_WCE_dupRemove.bed) bed-format files and
+	R scripts of "CLUES_functions.R" and "CLUESv1.R" in the working directory. 
+	####################
+	If you have both case and control ChIP-Seq files, cd in the directory and run the command
+
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 test_H3K27me3 200 0.05 10 0.01 1.5 NPs_H3K27me3.txt SERs_H3K27me3.txt LERs_H3K27me3.txt" CLUESv1.R H3K27me3.Rout > H3K27me3.log &
+
+	Here "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 test_H3K27me3 200 0.05 10 0.01 1.5 NPs_H3K27me3.txt SERs_H3K27me3.txt LERs_H3K27me3.txt"
+	descripts the input/output files and paramters to run CLUES. We explain them one by one as following, 
+
+	"Mikkelsen_H3K27me3_dupRemove.bed" (input file) is the case ChIP-Seq file.
+	"Mikkelsen_WCE_dupRemove.bed" (input file) is the control ChIP-Seq file.
+	"mm9" (parameter) specifies the species and version of the reference genome of your ChIP-Seq file ("mm8","mm9", "hg18" and "hg19" are available in CLUES now).
+	"0.8" (parameter) is the mappability parameter of reference genome, we set it as 0.8 for mouse and human in CLUES, see MUSIC (PMID: 25292436) for detail of the parameter.
+	"test_H3K27me3" (output file) is the name of the directory storing output files (NPs, SERs and LERs etc).
+	"200" (parameter) is the size of the fragments in your ChIP-Seq library, we set it as 200bp in CLUES.
+	"0.05" (parameter) is the FDR threshold to call significant NPs, SERs and LERs.
+	"10" (parameter) is the number of CPU used to run CLUES.
+	"0.01" (parameter) is the threshold of fragment rate by distance (FR-D), see CLUES method in the manuscript for detail.
+	"1.5" (parameter) is the fold enrichment threshold to call fragment ERs by reads enrichment in the ChIP-Seq data, see CLUES method in the manuscript for detail.
+	"NPs_H3K27me3.txt" (output file) is the name of the file storing called NPs.
+	"SERs_H3K27me3.txt" (output file) is the name of the file storing called SERs.
+	"LERs_H3K27me3.txt" (output file) is the name of the file storing called LERs.
+
+	If you only have case ChIP-Seq file, cd in the directory and run the command
+	
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_H3K27me3_dupRemove.bed mm9 0.8 test_H3K27me3 200 0.05 10 0.01 1.5 NPs_H3K27me3.txt SERs_H3K27me3.txt LERs_H3K27me3.txt" CLUESv1.R H3K27me3.Rout > H3K27me3.log &
+
+
+	#####################
+2	run CLUES with user-selected parameters to call NPs, SERs and LERs step by step.
+	please put the case (Mikkelsen_H3K27me3_dupRemove.bed) and control (Mikkelsen_WCE_dupRemove.bed) bed-format files and
+	R scripts of "CLUES_functions.R", "NPs_calling.R", "SERs_parameterTuning.R", "SERs_calling.R", "LERs_parameterTuning.R" and
+	"LERs_calling.R" in the working directory. 
+	####################
+	Call NPs.
+	If you have both case and control ChIP-Seq files, cd in the directory and run the command	
+
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 H3K27me3 200 0.05 10 NPs_H3K27me3.txt" NPs_calling.R NPs_calling.Rout > NPs_calling.log &
+
+	Here "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 H3K27me3 200 0.05 10 NPs_H3K27me3.txt"
+	descripts the input/output files and paramters to run CLUES. We explain them one by one as following, 
+
+	"Mikkelsen_H3K27me3_dupRemove.bed" (input file) is the case ChIP-Seq file.
+	"Mikkelsen_WCE_dupRemove.bed" (input file) is the control ChIP-Seq file.
+	"mm9" (parameter) specifies the species and version of the reference genome of your ChIP-Seq file ("mm8","mm9", "hg18" and "hg19" are available in CLUES now).
+	"0.8" (parameter) is the mappability parameter of reference genome, we set it as 0.8 for mouse and human in CLUES, see MUSIC (PMID: 25292436) for detail of the parameter.
+	"test_H3K27me3" (output file) is the name of the directory storing output files (NPs etc).
+	"200" (parameter) is the size of the fragments in your ChIP-Seq library, we set it as 200bp in CLUES.
+	"0.05" (parameter) is the FDR threshold to call significant NPs, SERs and LERs.
+	"10" (parameter) is the number of CPU used to run CLUES.
+	"NPs_H3K27me3.txt" (output file) is the name of the file storing called NPs.
+
+	If you only have case ChIP-Seq file, cd in the directory and run the command	
+
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_H3K27me3_dupRemove.bed mm9 0.8 H3K27me3 200 0.05 10 NPs_H3K27me3.txt" NPs_calling.R NPs_calling.Rout > NPs_calling.log &
+
+	####################
+	Calculate FR-D of NPs, and calculate FR-D of NPs-cluster under different length parameters of step windows (l_PDNP) 
+	to determine the optimized l_PDNP for SERs calling.
+	If you have both case and control ChIP-Seq files, cd in the directory and run the command	
+
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed 0.8 H3K27me3 110 0.05 10 NPs_H3K27me3.txt" SERs_parameterTuning.R SERs_parameterTuning.Rout > SERs_parameterTuning.log &
+
+	Here "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 10 NPs_H3K27me3.txt"
+	descripts the input/output files and paramters to run CLUES. We explain them one by one as following, 
+
+	"Mikkelsen_H3K27me3_dupRemove.bed" (input file) is the case ChIP-Seq file.
+	"Mikkelsen_WCE_dupRemove.bed" (input file) is the control ChIP-Seq file.
+	"mm9" (parameter) specifies the species and version of the reference genome of your ChIP-Seq file ("mm8","mm9", "hg18" and "hg19" are available in CLUES now).
+	"0.8" (parameter) is the mappability parameter of reference genome, we set it as 0.8 for mouse and human in CLUES, see MUSIC (PMID: 25292436) for detail of the parameter.
+	"H3K27me3" (output file) is the name of the directory storing output files (FR-D of NPs, and NPs of NPs-cluster under different length parameters of step windows).
+	"110" (parameter) is the estimated shift parameter, you can find the value of the parameter from the "ShiftParameter.txt" file in the directory storing NPs result. See CLUES method for the detail of the parameter.
+	"0.05" (parameter) is the FDR to call the significant NPs, SERs and LERs.
+	"10" (parameter) is the number of CPU used to run CLUES.
+	"NPs_H3K27me3.txt" (input file) is the name of the file storing called NPs. Please find the file (should be sorted by location) in the directory storing NPs result and move it on the working directory.
+
+	If you only have case ChIP-Seq file, cd in the directory and run the command	
+
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_H3K27me3_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 10 NPs_H3K27me3.txt" SERs_parameterTuning.R SERs_parameterTuning.Rout > SERs_parameterTuning.log &
+
+	####################
+	Call SERs
+	You can find FR-D of NPs in the ChIP-Seq data from "FRD_NPs.txt" file and FR-D of NPs-cluster under different length parameters of step windows (l_PDNP)
+	from the "StepWindowSize_limit_SERs.txt" file to determine whether to call SERs and the length parameter of SERs calling. Both files are located in the directory 
+	storing output files of "Calculate FR-D of NPs, and ..." step.	
+	 
+	If you decide to call SERs and you have both case and control ChIP-Seq files, cd in the directory and run the command	
+
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 10 NPs_H3K27me3.txt SERs_H3K27me3.txt 1718" SERs_calling.R SERs_calling.Rout > SERs_calling.log &
+
+	Here "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 10 NPs_H3K27me3.txt SERs_H3K27me3.txt 1718" 
+	descripts the input/output files and paramters to run CLUES. We explain them one by one as following, 
+
+	"Mikkelsen_H3K27me3_dupRemove.bed" (input file) is the case ChIP-Seq file.
+	"Mikkelsen_WCE_dupRemove.bed" (input file) is the control ChIP-Seq file.
+	"mm9" (parameter) specifies the species and version of the reference genome of your ChIP-Seq file ("mm8","mm9", "hg18" and "hg19" are available in CLUES now).
+	"0.8" (parameter) is the mappability parameter of reference genome, we set it as 0.8 for mouse and human in CLUES, see MUSIC (PMID: 25292436) for detail of the parameter.
+	"H3K27me3" (output file) is the name of the directory storing output files (SERs etc).
+	"110" (parameter) is the estimated shift parameter, you can find the value of the parameter from the "ShiftParameter.txt" file in the directory storing NPs result. See CLUES method for the detail of the parameter.
+	"0.05" (parameter) is the FDR to call the significant NPs, SERs and LERs.
+	"10" (parameter) is the number of CPU used to run CLUES.
+	"NPs_H3K27me3.txt" (input file) is the name of the file storing called NPs. Please find the file (should be sorted by location) in the directory storing NPs result and move it on the working directory.
+	"SERs_H3K27me3.txt" (output file) is the name of the file storing called SERs.
+	"1718" (parameter) is the value of the length parameter of step windows (l_PDNP) for SERs calling. You can choose it from the "StepWindowSize_limit_SERs.txt" file in the directory storing output files 
+	on the step of "Calculate FR-D of NPs, and ..." step.	
+
+	If you only have case ChIP-Seq file, cd in the directory and run the command	
+
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_H3K27me3_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 10 NPs_H3K27me3.txt SERs_H3K27me3.txt 1718" SERs_calling.R SERs_calling.Rout > SERs_calling.log &
+	
+	####################
+	Calculate FR-RE of input ERs and calculate FR-RE of input-ERs-cluster under different length parameters of step windows (l_PDNP) 
+	to determine the optimized l_PDNP for LERs calling.	
+	If you have both case and control ChIP-Seq files, cd in the directory and run the command	
+	
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 1.5 10 SERs_H3K27me3.txt" LERs_parameterTuning.R LERs_parameterTuning.Rout > LERs_parameterTuning.log &
+
+	Here "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 1.5 10 SERs_H3K27me3.txt"
+	descripts the input/output files and paramters to run CLUES. We explain them one by one as following, 
+
+	"Mikkelsen_H3K27me3_dupRemove.bed" (input file) is the case ChIP-Seq file.
+	"Mikkelsen_WCE_dupRemove.bed" (input file) is the control ChIP-Seq file.
+	"mm9" (parameter) specifies the species and version of the reference genome of your ChIP-Seq file ("mm8","mm9", "hg18" and "hg19" are available in CLUES now).
+	"0.8" (parameter) is the mappability parameter of reference genome, we set it as 0.8 for mouse and human in CLUES, see MUSIC (PMID: 25292436) for detail of the parameter.
+	"H3K27me3" (output file) is the name of the directory storing output files (FR-RE of input ERs, and FR-RE of input-ERs-cluster under different length parameters of step windows).
+	"110" (parameter) is the estimated shift parameter, you can find the value of the parameter from the "ShiftParameter.txt" file in the directory storing NPs result. See CLUES method for the detail of the parameter.
+	"0.05" (parameter) is the FDR to call the significant NPs, SERs and LERs.
+	"10" (parameter) is the number of CPU used to run CLUES.
+	"SERs_H3K27me3.txt" (input file) is the name of the file storing called SERs. Please find the file (should be sorted by location) in the directory storing SERs result and move it on the working directory.
+
+	
+	If you only have case ChIP-Seq file, cd in the directory and run the command	
+	
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_H3K27me3_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 1.5 10 SERs_H3K27me3.txt" LERs_parameterTuning.R LERs_parameterTuning.Rout > LERs_parameterTuning.log &
+		
+	####################
+	Call LERs
+	You can find FR-RE of input ERs from "FR_RE.txt" file and FR-RE of input-ERs-cluster under different length parameters of step windows (l_PDNP)
+	from the "StepWindowSize_limit_LERs.txt" file to determine whether to call LERs and the length parameter of LERs calling. Both files are located in the directory 
+	storing output files of "Calculate FR-RE of input ERs and ... " step.	
+	If you decide to call SERs and you have both case and control ChIP-Seq files, cd in the directory and run the command	
+	
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 10 SERs_H3K27me3.txt LERs_H3K27me3.txt 5947" LERs_calling.R LERs_calling.Rout > LERs_calling.log &
+
+	Here "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_WCE_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 10 SERs_H3K27me3.txt LERs_H3K27me3.txt 5947"
+	descripts the input/output files and paramters to run CLUES. We explain them one by one as following, 
+
+	"Mikkelsen_H3K27me3_dupRemove.bed" (input file) is the case ChIP-Seq file.
+	"Mikkelsen_WCE_dupRemove.bed" (input file) is the control ChIP-Seq file.
+	"mm9" (parameter) specifies the species and version of the reference genome of your ChIP-Seq file ("mm8","mm9", "hg18" and "hg19" are available in CLUES now).
+	"0.8" (parameter) is the mappability parameter of reference genome, we set it as 0.8 for mouse and human in CLUES, see MUSIC (PMID: 25292436) for detail of the parameter.
+	"H3K27me3" (output file) is the name of the directory storing output files (LERs).
+	"110" (parameter) is the estimated shift parameter, you can find the value of the parameter from the "ShiftParameter.txt" file in the directory storing NPs result. See CLUES method for the detail of the parameter.
+	"0.05" (parameter) is the FDR to call the significant NPs, SERs and LERs.
+	"10" (parameter) is the number of CPU used to run CLUES.
+	"SERs_H3K27me3.txt" (input file) is the name of the file storing called SERs. Please find the file (should be sorted by location) in the directory storing SERs result and move it on the working directory.
+	"LERs_H3K27me3.txt" (output file) is the name of the file storing called LERs.
+	"5947" (parameter) is the value of the length parameter of step windows (l_PDNP) for LERs calling. You can choose it from the "StepWindowSize_limit_LERs.txt" file. 
+	The "StepWindowSize_limit_LERs.txt" is in the directory storing output files of "Calculate FR-RE of input ERs and ... " step.	
+	
+	If you only have case ChIP-Seq file, cd in the directory and run the command	
+
+	nohup R CMD BATCH "--args Mikkelsen_H3K27me3_dupRemove.bed Mikkelsen_H3K27me3_dupRemove.bed mm9 0.8 H3K27me3 110 0.05 10 SERs_H3K27me3.txt LERs_H3K27me3.txt 5947" LERs_calling.R LERs_calling.Rout > LERs_calling.log &
+
+#########################################################################################################
+What to output?
+
+	"NPs_H3K4me3.txt" stores NPs result. Here is the example of one record in the file.
+	chromosome start_site end_site reads_in_the_NP_in_case_sample summit_location reads_in_the_NP_in_control_sample(or_background) summit_height(reads_coverage) p_value_of_the_NP(-log10_format) fold_enrichment_of_the_NP FDR_of_the_NP(-log10_format)
+	"chr1	3521948	3522049	16	3521993	3.27272727272727	18	6.52051889839504	4.9840173179696	5.32646022505086"
+
+	"SERs_H3K4me3.txt" stores SERs result. Here is the example of one record in the file.
+	chromosome start_site end_site reads_in_the_SER_in_case_sample number_of_NPs_in_the_SER reads_in_the_SER_in_control_sample(or_background) p_value_of_the_SER(-log10_format) fold_enrichment_of_the_SER FDR_of_the_SER(-log10_format)
+	"chr1	3659693	3662659	75.9232323232323	3	1.9979797979798	27.4480460369155	5.03086136704342	25.880506141222"
+
+	"LERs_H3K4me3.txt" stores LERs result. Here is the example of one record in the file.
+	chromosome start_site end_site reads_in_the_LER_in_case_sample number_of_input_ERs_in_the_LER reads_in_the_LER_in_control_sample(or_background) p_value_of_the_LER(-log10_format) fold_enrichment_of_the_LER FDR_of_the_LER(-log10_format)
+	"chr1	3659693	3662659	75.9232323232323	1	1.9979797979798	27.4480460369155	5.03086136704342	25.9998688058069"
+
+	"ShiftParameter.txt" stores the estimated shift parameter.
+	"FRD_NPs.txt" stores the FR-D of NPs in the ChIP-Seq data.
+
+	"StepWindowSize_limit_SERs.txt" stores the FR-D of the NPs-cluster under different l_PDNP. Here is the example of records in the file.
+	l_PDNP FR-D_of_NPs-cluster_under_the_l_PDNP. 
+	"706	0.28038456019515"
+	"1353	0.299678259537307"
+	"2074	0.0890039447731755"
+
+	Please ignore the "0 1" row in the file (if it has). In the manuscript, we set the l_PDNP as the smallest one with FR-D < 0.01. User can set their own l_PDNP parameter.
+
+	"FR_RE.txt" stores the FR-RE of input ERs.
+
+	"StepWindowSize_limit_LERs.txt" stores the reads fold enrichment threshold (RE-T) to call the FR-RE as 1%, 2% and 5%. 
+	See CLUES method in the manuscript for the detail of calculation of FR-RE by reads fold enrichment threshold.
+	Here is the example of records in the file
+	l_PDNP 1%_RE-T 2%_RE-T 5%_RE-T
+	"4212	1.72108415188327	1.72108415188327	2.16238778057129"
+	"6296	1.72108415188327	1.94173596622728	2.16238778057129"
+
+	Please ignore the "0 0 0 0" row in the file (if it has).In the manuscript, we set the l_PDNP as the largest one with 1%_RE-T > 1.5. User can set their own l_PDNP parameter.
+
+#######################################################################################################################
+How to prioritize NPs, SERs and LERs?
+
+	CLUES will prioritize the ERs results (NPs, SERs and LERs) to facilitate users to navigate the potential important sequence motifs, genes and gene-clusters(domains).
+	Please put the input ERs (NPs, SERs or LERs) and "CLUES_ranking.R" in the working directory.
+
+	If you decide to prioritize the NPs associated with important sequence motifs, cd in the directory and run the command	
+		
+	nohup R CMD BATCH "--args NPs_H3K27me3.txt Bymotif NPs_H3K27me3_ranked.txt" CLUES_ranking.R CLUES_ranking.Rout > CLUES_ranking.log &
+	
+	"LERs_H3K27me3.txt" (input file) is the input NPs file
+	"Bymotif" (parameter) is the parameter of prioritization.
+	"NPs_H3K27me3_ranked.txt" (output file) is the ranked NPs file
+	
+	If you decide to prioritize SERs/LERs associated with genes, cd in the directory and run the command	
+		
+	nohup R CMD BATCH "--args SERs_H3K27me3.txt Bygene SERs_H3K27me3_ranked.txt" CLUES_ranking.R CLUES_ranking.Rout > CLUES_ranking.log &
+	
+	"SERs_H3K27me3.txt" (or "LERs_H3K27me3.txt") is the input SERs (or LERs) file
+	"Bygene"(parameter) is the parameter of prioritization.
+	"SERs_H3K27me3_ranked.txt" (output file) is the ranked SERs file
+
+	If you decide to prioritize LERs associated with gene-clusters (domains), cd in the directory and run the command	
+		
+	nohup R CMD BATCH "--args LERs_H3K27me3.txt Bydomain LERs_H3K27me3_ranked.txt" CLUES_ranking.R CLUES_ranking.Rout > CLUES_ranking.log &
+	
+	"LERs_H3K27me3.txt" (input file) is the input LERs file.
+	"Bydomain" (parameter) is the parameter of prioritization.
+	"LERs_H3K27me3_ranked.txt" (output file) is the ranked LERs file
+
+Please see the manuscript for the detail of ranking NPs, SERs and LERs by CLUES.
+
+#######################################################################################################################
+How to contact?
+
+If you have any question or suggestion about CLUES, please contact with Chao Wu (wuchao1984@zju.edu.cn).
+
+
